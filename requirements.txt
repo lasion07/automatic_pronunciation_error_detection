@@ -1,0 +1,17 @@
+-f https://download.pytorch.org/whl/torch_stable.html
+torch
+torchaudio
+soundfile
+omegaconf
+audioread
+requests
+dtwalign
+eng_to_ipa
+pandas
+flask
+flask_cors
+pickle-mixin
+sqlalchemy
+transformers
+sentencepiece
+ortools
