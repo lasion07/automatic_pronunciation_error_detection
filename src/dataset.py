@@ -2,15 +2,11 @@ import json
 import random
 
 import pandas as pd
-import eng_to_ipa as ei
 
+from src.utils.eng2ipa import eng2ipa
 
 dataset_name = 'cv-valid-test'
 dataset_information = pd.read_csv(f'data/{dataset_name}.csv')
-
-def eng2ipa(text):
-    ipa_text = ei.convert(text).replace('*','')
-    return ipa_text
 
 def lambda_handler(event, context):
     body = json.loads(event['body'])

@@ -7,10 +7,10 @@ import base64
 import random
 import audioread
 import numpy as np
-import WordMatching as wm
+import src.utils.WordMatching as wm
 
 from torchaudio.transforms import Resample
-from pronunciation_model import EnglishModel
+from src.model import EnglishModel
 
 
 model = EnglishModel()

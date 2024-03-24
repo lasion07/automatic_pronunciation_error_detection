@@ -4,8 +4,8 @@ import os
 from flask_cors import CORS
 import json
 
-import pronunciation_assessment
-import sample
+import src.assessment as assessment
+import src.dataset as dataset
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -22,13 +22,13 @@ def main():
 @app.route(rootPath+'/getSample', methods=['POST'])
 def getNext():
     event = {'body':  json.dumps(request.get_json(force=True))}
-    return sample.lambda_handler(event, [])
+    return dataset.lambda_handler(event, [])
 
 
 @app.route(rootPath+'/GetAccuracyFromRecordedAudio', methods=['POST'])
 def GetAccuracyFromRecordedAudio():
     event = {'body': json.dumps(request.get_json(force=True))}
-    return pronunciation_assessment.lambda_handler(event, [])
+    return assessment.lambda_handler(event, [])
 
 
 if __name__ == "__main__":

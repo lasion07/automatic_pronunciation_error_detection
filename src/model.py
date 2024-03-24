@@ -1,16 +1,12 @@
 import torch
 import numpy as np
-import WordMetrics
-import WordMatching as wm
+import src.utils.WordMetrics as WordMetrics
+import src.utils.WordMatching as wm
 from string import punctuation
 
-import eng_to_ipa as ei
+from src.utils.eng2ipa import eng2ipa
 from transformers import AutoTokenizer, AutoFeatureExtractor, AutoModelForCTC
 
-
-def eng2ipa(text):
-    ipa_text = ei.convert(text).replace('*','')
-    return ipa_text
 
 class EnglishModel:
     current_transcript: str
