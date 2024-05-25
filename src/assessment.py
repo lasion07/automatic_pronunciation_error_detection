@@ -7,6 +7,7 @@ import base64
 import random
 import audioread
 import numpy as np
+import eng_to_ipa as ei
 import src.utils.WordMatching as wm
 
 from torchaudio.transforms import Resample
@@ -17,17 +18,100 @@ model = EnglishModel()
 
 transform = Resample(orig_freq=48000, new_freq=16000)
 
+def calculate_score(correct_count, total_count):
+    return np.round(correct_count / (total_count+0.001), 2)
+
+def get_score(label, pred):
+    def find_lcs(X, Y):
+        m = len(X)
+        n = len(Y)
+
+        L = [[0 for i in range(n+1)] for j in range(m+1)]
+    
+        # Following steps build L[m+1][n+1] in bottom up fashion. Note
+        # that L[i][j] contains length of LCS of X[0..i-1] and Y[0..j-1]
+        for i in range(m+1):
+            for j in range(n+1):
+                if i == 0 or j == 0:
+                    L[i][j] = 0
+                elif X[i-1] == Y[j-1]:
+                    L[i][j] = L[i-1][j-1] + 1
+                else:
+                    L[i][j] = max(L[i-1][j], L[i][j-1])
+    
+        # Create a string variable to store the lcs string
+        # lcs = ""
+        lcs_indexes = []
+    
+        # Start from the right-most-bottom-most corner and
+        # one by one store characters in lcs[]
+        i = m
+        j = n
+        while i > 0 and j > 0:
+    
+            # If current character in X[] and Y are same, then
+            # current character is part of LCS
+            if X[i-1] == Y[j-1]:
+                # lcs += X[i-1]
+                lcs_indexes.append(i-1)
+                i -= 1
+                j -= 1
+    
+            # If not same, then find the larger of two and
+            # go in the direction of larger value
+            elif L[i-1][j] > L[i][j-1]:
+                i -= 1
+                
+            else:
+                j -= 1
+    
+        # We traversed the table in reverse order
+        # LCS is the reverse of what we got
+        # lcs = lcs[::-1]
+        # lcs_indexes = lcs_indexes[::-1]
+        
+        return lcs_indexes
+    
+    lcs_indexes = find_lcs(label, pred)
+    score = calculate_score(len(lcs_indexes), len(label))
+    error_indexes = np.ones(len(label), dtype=bool)
+    for index in lcs_indexes:
+        error_indexes[index] = False
+
+    return score, error_indexes
+
+def eng2ipa(text):
+    ipa_text = ei.convert(text)
+    replacement_dict = {'*': '',
+                       "ˈ": '',
+                       'ˌ': '',
+                       }
+    for char in replacement_dict.keys():
+        ipa_text = ipa_text.replace(char, replacement_dict[char])
+    return ipa_text
+
+def convert_output(text):
+    converted_text = text
+    replacement_dict = {'d͡ʒ': 'ʤ',
+                        't͡ʃ': 'ʧ',
+                        'ɚ': 'ər',
+                        'ɹ': 'r',
+                        'ʌ': 'ə'
+                       }
+    for char in replacement_dict.keys():
+        converted_text = converted_text.replace(char, replacement_dict[char])
+    return converted_text
 
 def lambda_handler(event, context):
     data = json.loads(event['body'])
 
     # Get values
-    real_text = data['title']
+    sentence = data['title']
     audio_bytes = base64.b64decode(
         data['base64Audio'][22:].encode('utf-8')) # 22 is default
 
     # Check real_text exists
-    if len(real_text) == 0:
+    if len(sentence) == 0:
         return {
             'statusCode': 200,
             'headers': {
@@ -53,13 +137,12 @@ def lambda_handler(event, context):
     start = time.time()
     signal, fs = audioread_load(audio_chunk_path)
 
-    signal = transform(torch.Tensor(signal)).unsqueeze(0)
+    signal = transform(torch.Tensor(signal))
 
     print('Time for loading .ogg file file: ', str(time.time()-start))
 
     # Run model
-    result = model.processAudioForGivenText(
-        signal, real_text)
+    pred_string = model.recognize(signal)
 
     # Remove the audio file
     start = time.time()
@@ -67,57 +150,46 @@ def lambda_handler(event, context):
     print('Time for deleting file: ', str(time.time()-start))
 
     start = time.time()
-    real_transcripts_ipa = ' '.join(
-        [word[0] for word in result['real_and_transcribed_words_ipa']])
-    matched_transcripts_ipa = ' '.join(
-        [word[1] for word in result['real_and_transcribed_words_ipa']])
+    label_string = eng2ipa(sentence)
+    pred_string = convert_output(pred_string)
+    print(sentence, label_string)
 
-    real_transcripts = ' '.join(
-        [word[0] for word in result['real_and_transcribed_words']])
-    matched_transcripts = ' '.join(
-        [word[1] for word in result['real_and_transcribed_words']])
+    label = label_string.replace(' ', '') # remove space
+    pred = pred_string.replace(' ', '') # remove space
+    print(f'Pred: {pred}, Label: {label}')
+    score, error_indexes = get_score(label, pred)
+    print(f'Your score:', score)
 
-    words_real = real_transcripts.lower().split()
-    mapped_words = matched_transcripts.split()
+    char_index = 0
+    correct_char_count = 0
+    char_in_word_count = 0
+    word_scores = []
+    error_char_indexes = []
 
-    is_letter_correct_all_words = ''
-    for idx, word_real in enumerate(words_real):
+    for char in label_string:
+        if char == ' ':
+            word_scores.append(calculate_score(correct_char_count, char_in_word_count))
+            correct_char_count = 0
+            char_in_word_count = 0
+            continue
 
-        mapped_letters, mapped_letters_indices = wm.get_best_mapped_words(
-            mapped_words[idx], word_real)
+        if error_indexes[char_index]:
+            error_char_indexes.append(False)
+        else:
+            error_char_indexes.append(True)
+            correct_char_count += 1
+        char_index += 1
+        char_in_word_count += 1
+    
+    word_scores.append(calculate_score(correct_char_count, char_in_word_count))
 
-        is_letter_correct = wm.getWhichLettersWereTranscribedCorrectly(
-            word_real, mapped_letters)  # , mapped_letters_indices)
-
-        is_letter_correct_all_words += ''.join([str(is_correct)
-                                                for is_correct in is_letter_correct]) + ' '
-
-    pair_accuracy_category = ' '.join(
-        [str(category) for category in result['pronunciation_categories']])
     print('Time to post-process results: ', str(time.time()-start))
 
-    res = {'real_transcript': result['recording_transcript'],
-           'ipa_transcript': result['recording_ipa'],
-           'pronunciation_accuracy': str(int(result['pronunciation_accuracy'])),
-           'real_transcripts': real_transcripts, 'matched_transcripts': matched_transcripts,
-           'real_transcripts_ipa': real_transcripts_ipa,
-           'matched_transcripts_ipa': matched_transcripts_ipa,
-           'pair_accuracy_category': pair_accuracy_category,
-           'start_time': result['start_time'],
-           'end_time': result['end_time'],
-           'is_letter_correct_all_words': is_letter_correct_all_words}
-
-    # {'real_transcript': 'what regisable do you useer grove', 
-    #  'ipa_transcript': 'wət regisable du ju useer groʊv', 
-    #  'pronunciation_accuracy': '63', 
-    #  'real_transcripts': 'What vegetables do you usually grow?', 
-    #  'matched_transcripts': 'what regisable do you useer grove', 
-    #  'real_transcripts_ipa': 'wət ˈvɛʤtəbəlz du ju ˈjuʒəwəli groʊ?', 
-    #  'matched_transcripts_ipa': 'wət regisable du ju useer groʊv', 
-    #  'pair_accuracy_category': '0 1 0 0 2 2', 
-    #  'start_time': '0.6198125 1.25025 2.1959375 2.432375 2.66875 3.2204375', 
-    #  'end_time': '0.95625 2.217125 2.532375 2.76875 3.241625 3.8720625', 
-    #  'is_letter_correct_all_words': '1111 0110011110 11 111 1100000 11101 '}
+    res = {'score': score,
+           'error_char_indexes': error_char_indexes,
+           'word_scores': word_scores}
+    
+    print(res)
 
     return json.dumps(res)
 

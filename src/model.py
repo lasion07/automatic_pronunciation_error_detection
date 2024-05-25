@@ -2,10 +2,15 @@ import torch
 import numpy as np
 import src.utils.WordMetrics as WordMetrics
 import src.utils.WordMatching as wm
-from string import punctuation
 
+from itertools import groupby
+from string import punctuation
 from src.utils.eng2ipa import eng2ipa
-from transformers import AutoTokenizer, AutoFeatureExtractor, AutoModelForCTC
+from transformers import AutoProcessor, AutoModelForCTC, Wav2Vec2Processor
+from phonemizer.backend.espeak.wrapper import EspeakWrapper
+
+_ESPEAK_LIBRARY = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.1.1.48.dylib'  #use the Path to the library.
+EspeakWrapper.set_library(_ESPEAK_LIBRARY)
 
 
 class EnglishModel:
@@ -22,67 +27,43 @@ class EnglishModel:
     sampling_rate = 16000
 
     def __init__(self) -> None:
-        model_name = 'jonatasgrosman/wav2vec2-large-xlsr-53-english'
-        self.model = AutoModelForCTC.from_pretrained(model_name)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.feature_extractor = AutoFeatureExtractor.from_pretrained(model_name)
+        checkpoint = "bookbot/wav2vec2-ljspeech-gruut"
+        self.model = AutoModelForCTC.from_pretrained(checkpoint)
+        self.processor = AutoProcessor.from_pretrained(checkpoint)
+        self.sr = self.processor.feature_extractor.sampling_rate
 
     ##################### ASR Functions ###########################
     
-    def processAudioForGivenText(self, recordedAudio: torch.Tensor = None, real_text=None):
-        def speech_recognize(recordedAudio: torch.Tensor, return_offsets=True):
-            # data = io.BytesIO(audio)
-            # clip = AudioSegment.from_file(data)
-            waveform = recordedAudio[0] # torch.FloatTensor(clip.get_array_of_samples())
+    def recognize(self, recordedAudio: torch.Tensor = None):
+        def decode_phonemes(
+            ids: torch.Tensor, processor: Wav2Vec2Processor, ignore_stress: bool = False
+        ) -> str:
+            """CTC-like decoding. First removes consecutive duplicates, then removes special tokens."""
+            # removes consecutive duplicates
+            ids = [id_ for id_, _ in groupby(ids)]
 
-            # forward sample through model to get greedily predicted transcription ids
-            input_values = self.feature_extractor(waveform, sampling_rate=16_000, return_tensors="pt", padding="longest").input_values
-            logits = self.model(input_values).logits[0]
-            pred_ids = torch.argmax(logits, axis=-1)
+            special_token_ids = processor.tokenizer.all_special_ids + [
+                processor.tokenizer.word_delimiter_token_id
+            ]
+            # converts id to token, skipping special tokens
+            phonemes = [processor.decode(id_) for id_ in ids if id_ not in special_token_ids]
 
-            # retrieve word stamps (analogous commands for `output_char_offsets`)
-            outputs = self.tokenizer.decode(pred_ids, output_word_offsets=True)
-            # compute `time_offset` in seconds as product of downsampling ratio and sampling_rate
-            time_offset = self.model.config.inputs_to_logits_ratio / self.feature_extractor.sampling_rate
+            # joins phonemes
+            prediction = " ".join(phonemes)
 
-            start_time, end_time = "", ""
-            for d in outputs.word_offsets:
-                start_time += str(round(d["start_offset"] * time_offset, 2)) + " "
-                end_time += str(round(d["end_offset"] * time_offset, 2)) + " "
+            # whether to ignore IPA stress marks
+            if ignore_stress == True:
+                prediction = prediction.replace("ˈ", "").replace("ˌ", "")
 
-            recording_transcript = outputs.text.lower()
-            recording_ipa = eng2ipa(recording_transcript)
-
-            return recording_transcript, recording_ipa, start_time, end_time
-    
-        recording_transcript, recording_ipa, start_time, end_time = speech_recognize(recordedAudio)
-
-        print(recording_transcript, recording_ipa, start_time, end_time, sep='\n')
-
-        real_and_transcribed_words, real_and_transcribed_words_ipa, mapped_words_indices = self.matchSampleAndRecordedWords(
-            real_text, recording_transcript)
-
-        pronunciation_accuracy, current_words_pronunciation_accuracy = self.getPronunciationAccuracy(
-            real_and_transcribed_words)  # _ipa
-
-        pronunciation_categories = self.getWordsPronunciationCategory(
-            current_words_pronunciation_accuracy)
+            return prediction
         
-        # print({'recording_transcript': recording_transcript,
-        #         'real_and_transcribed_words': real_and_transcribed_words,
-        #         'recording_ipa': recording_ipa,
-        #         'start_time': start_time,
-        #         'end_time': end_time,
-        #         'real_and_transcribed_words_ipa': real_and_transcribed_words_ipa, 'pronunciation_accuracy': pronunciation_accuracy,
-        #         'pronunciation_categories': pronunciation_categories})
+        inputs = self.processor(recordedAudio, sampling_rate=self.sr, return_tensors="pt", padding=True)
+        with torch.no_grad():
+            logits = self.model(inputs["input_values"]).logits
+        predicted_ids = torch.argmax(logits, dim=-1)
+        pred_string = decode_phonemes(predicted_ids[0], self.processor, ignore_stress=True)
 
-        return {'recording_transcript': recording_transcript,
-                'real_and_transcribed_words': real_and_transcribed_words,
-                'recording_ipa': recording_ipa,
-                'start_time': start_time,
-                'end_time': end_time,
-                'real_and_transcribed_words_ipa': real_and_transcribed_words_ipa, 'pronunciation_accuracy': pronunciation_accuracy,
-                'pronunciation_categories': pronunciation_categories}
+        return pred_string
 
     ##################### END ASR Functions ###########################
 
