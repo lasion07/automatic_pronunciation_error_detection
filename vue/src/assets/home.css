@@ -1,0 +1,281 @@
+/* CSS cho trang Home */
+.home-container {
+    background-color: rgb(255, 255, 255);
+    color: black;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 90vh;
+    width: 100vw; 
+  } 
+  .main-element{
+    width: 100vw;
+    height: 90vh;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+  .main-container{
+    width: 60%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    /* align-items: center; */
+  }
+  .main-content{
+    padding-top: 50px;
+    width: 60%;
+    display: flex;
+    flex-direction: column;
+    /* justify-content: center; */
+    align-items: center;
+
+  }
+  .header{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    /* align-content: space-between; */
+    align-items: center;
+    justify-content: center;
+  }
+  .dashboard{
+
+    width: 20%;
+    display: flex;
+    /* padding-left: 5%; */
+    flex-direction: column;
+    align-items: space-between;
+    /* justify-content: center; */
+    
+  }
+  .content {
+    padding-top: 30px;
+    margin-bottom: 20px;
+    background-color: rgb(255, 255, 255);
+    width: 700px;
+    height: 200px;
+    font-size: 20px;
+    display: flex;
+    justify-content: center;
+    /* border: 1px solid rgb(0, 0, 0); */
+  }
+  
+  .icon-container {
+    display: flex;
+    justify-content: center;
+    gap: 100px; /* Khoảng cách giữa các icon */
+    background-color: rgb(255, 255, 255);
+  }
+  
+  .icon {
+    cursor: pointer; 
+    display: flex;
+    background-color: rgb(255, 255, 255);
+    justify-content: center;
+  }
+  .volume{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    height: 60px;
+    border:1px solid black;
+    border-radius: 50%;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.5), 
+    -5px -5px 10px rgba(1, 239, 68, 0.5),
+    5px -5px 10px rgba(0, 255, 0, 0.5),
+    -5px 5px 10px rgba(1, 255, 77, 0.5);
+  }
+  .icon-mic{
+    display: flex;
+    /* color: red ; */
+    justify-content: center;
+    align-items: center;
+    width: 80px;
+    height: 80px;
+    border:1px solid black;
+    border-radius: 50%;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.5), 
+    -5px -5px 10px rgba(1, 239, 68, 0.5),
+    5px -5px 10px rgba(0, 255, 0, 0.5),
+    -5px 5px 10px rgba(1, 255, 77, 0.5);
+  }
+  .ear{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    height: 60px;
+    border:1px solid black;
+    border-radius: 50%;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.5), 
+    -5px -5px 10px rgba(1, 239, 68, 0.5),
+    5px -5px 10px rgba(0, 255, 0, 0.5),
+    -5px 5px 10px rgba(1, 255, 77, 0.5);
+  }
+  .icon-book{
+   
+  }
+  .icon-x{
+    background-color: white;
+  }
+
+  .footer{
+    height: 10vh;
+    width: 100vw;
+  }
+  .button-container {
+    height: 30%;
+    display: flex;
+    width: 100%;
+    align-content: space-around;
+    justify-content: space-around;
+    /* margin-top: 20px; */
+  }
+  
+  .button-container button {
+    cursor: pointer;
+    background-color: white;
+    margin: 0 10px; /* Khoảng cách giữa các button */
+    width: 150px;
+    height: 40px ;
+    border-radius: 10px;
+  }
+  
+  .button-container button:hover{
+    background-color: #a29a9a;
+  }
+  .process{
+    width: 70%;
+    display: flex;
+    flex-direction: row;
+    align-content: center;
+    justify-content: center;
+    
+    /* justify-content: center; */
+  }
+  .progress-container {
+    width: 300px;
+    height: 20px;
+    border: 1px solid #000000;
+    position: relative;
+    border-radius: 10px;
+  }
+  .progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: rgb(12, 255, 12);
+    border-radius: 10px;
+  }
+  .divider {
+    width: 100%;
+    height: 1px;
+    background-color: black;
+    margin: 10px 0;
+  }
+.display-result{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+  .score-result {
+    width: 20%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* height: 10%; */
+  }
+  
+  .circle {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: conic-gradient(rgb(0, 242, 0) 0% 70%, rgb(176, 174, 174) 10% 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .circle-inner {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .score {
+    font-size: 20px;
+    font-weight: bold;
+  }
+/* styles.css */
+.menu-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.book-container{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.menu-content button {
+  width: 120px;
+  position: relative;
+  background-color: #4CAF50; /* Green */
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.3s, transform 0.2s, border-color 0.3s; /* Add transition for background, transform, and border-color */
+}
+
+.menu-content button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -20px; /* Adjust this value based on the size of the triangle */
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 19px 0 20px 20px; /* Adjust this value to change the size of the triangle */
+  border-color: transparent transparent transparent #4CAF50; /* Adjust the color to match the button's background */
+  transition: border-color 0.3s; /* Add transition for border-color */
+}
+
+.menu-content button.active {
+  background-color: red;
+}
+
+.menu-content button.active::after {
+  border-color: transparent transparent transparent red;
+}
+
+/* Add click effect */
+.menu-content button:active {
+  transform: scale(0.95); /* Add slight shrink effect when clicked */
+}
+#waveform {
+  width: 100%;
+  height: 100px; 
+  background-color: #ffffff; 
+  border-radius: 10px;
+}
