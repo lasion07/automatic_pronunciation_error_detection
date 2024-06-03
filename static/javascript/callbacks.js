@@ -249,7 +249,7 @@ const startMediaDevice = () => {
             }
 
             try {
-                await fetch(apiMainPathSTS + '/GetAccuracyFromRecordedAudio', {
+                await fetch('/GetAccuracyFromRecordedAudio', {
                     method: "post",
                     body: JSON.stringify({ "title": currentText, "base64Audio": audioBase64}),
                     // headers: { "X-Api-Key": STScoreAPIKey }
