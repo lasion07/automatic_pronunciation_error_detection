@@ -17,15 +17,18 @@
           </div>
           <!-- <p>READ THE SENTENCES ALOUD</p> -->
           <div class="content">
-            <p>{{ currentSentence }}</p>
-          </div>
-          <div class="display-result">
-            <div class="score-result">
-              <div class="circle">
-                <div class="circle-inner">
-                  <span class="score">{{ score }}%</span>
-                </div>
-              </div>
+            <div id="sentence">
+              <span v-for="(wordObj, index) in coloredWords" :key="index" :class="wordObj.color">
+                {{ wordObj.word }}
+                <span v-if="index !== coloredWords.length - 1">&nbsp;</span>
+              </span>
+            </div>
+            <!--transcription-->
+            <div id="sentence">
+              <span v-for="(word, index) in currentSentence.split(' ')" :key="index">
+                {{ word }}
+                <span v-if="index !== currentSentence.split(' ').length - 1">&nbsp;</span>
+              </span>
             </div>
           </div>
           <audio ref="audioPlayer" controls style="display: none;"></audio>
@@ -43,6 +46,15 @@
           </div>
         </div>
       </div>
+      <div class="display-result">
+        <div class="score-result">
+          <div class="circle" :style="{ '--percentage': score + '%' }">
+            <div class="circle-inner">
+              <span class="score">{{ score }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="footer">
       <div class="divider"></div>
@@ -53,233 +65,230 @@
     </div>
   </div>
 </template>
-
-<script>
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import axios from 'axios';
+import WaveSurfer from 'wavesurfer.js';
 import IconMic from '@/components/icons/IconMic.vue';
 import IconEar from '@/components/icons/IconEar.vue';
 import IconVolume from '@/components/icons/IconVolume.vue';
-import axios from 'axios';
-import WaveSurfer from 'wavesurfer.js';
-// import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-// import { fa } from '@awesome.me/kit-KIT_CODE/icons'
 
-export default {
-  name: 'HomeView',
-  components: {
-    IconMic,
-    IconEar,
-    IconVolume,
-  },
-  data() {
-    return {
-      apiData:[],
-      text:[],
-      audio: [],
-      currentIndex: 0,
-      progress: 0,
-      isRecording: false,
-      recordedAudio: null,
-      mediaRecorder: null,
-      recordedChunks: [],
-      audioSaved: false,
-      activeButton: null,
-      score: 70,
-      getalldata: false,
-      length_data: 0,
-      wavesurfer: null,
-      animationFrameId: null,
-    };
-  },
-  computed: {
-    currentSentence() {
-      return this.text[this.currentIndex] || '';
+const apiData = ref([]);
+const text = ref([]);
+const audio = ref([]);
+const currentIndex = ref(0);
+const progress = ref(0);
+const isRecording = ref(false);
+const recordedAudio = ref(null);
+const mediaRecorder = ref(null);
+const recordedChunks = ref([]);
+const audioSaved = ref(false);
+const activeButton = ref(null);
+const score = ref(90);
+const getalldata = ref(false);
+const length_data = ref(0);
+const wavesurfer = ref(null);
+const animationFrameId = ref(null);
+// demo  =================================
+
+const sentence = "hold your nose to keep the smell from disabling your motor functions";
+const coloredWords = ref([]);
+
+generateColoredWords();
+
+function generateColoredWords() {
+  const words = sentence.split(' ');
+  for (let i = 0; i < words.length; i++) {
+    const score = Math.random();
+    let color;
+    if (score >= 0.8) {
+      color = 'green';
+    } else if (score < 0.5) {
+      color = 'red';
+    } else {
+      color = 'yellow';
     }
-  },
-  created() {
-    this.fetchData();
-  },
-  mounted() {
-    this.initWaveSurfer();
-  },
-  methods: {
-    initWaveSurfer() {
-      this.wavesurfer = WaveSurfer.create({
-        container: '#waveform',
-        waveColor: 'red',
-        progressColor: '#4CAF50',
-        cursorWidth: 0,
-        height:100,
-        responsive: true,
-        backend: 'WebAudio',
-      });
+    coloredWords.value.push({ word: words[i], color: color });
+  }
+}
+// ============================================
+const currentSentence = computed(() => {
+  return text.value[currentIndex.value] || '';
+});
 
-      this.wavesurfer.on('ready', () => {
-        console.log('WaveSurfer is ready');
-      });
-
-      this.wavesurfer.on('error', (e) => {
-        console.error(e);
-      });
-    },
-    setActive(button) {
-      this.activeButton = button;
-    },
-    playRecordedAudio() {
-      if (this.recordedChunks.length > 0) {
-        let recordedBlob = new Blob(this.recordedChunks, { type: 'audio/ogg' });
-        const audioUrl = URL.createObjectURL(recordedBlob);
-        this.$refs.audioPlayer.src = audioUrl;
-        this.$refs.audioPlayer.play();
-        this.wavesurfer.load(audioUrl);
-
-        this.wavesurfer.on('ready', () => {
-          this.wavesurfer.play();
-          this.startAnimation();
-        });
-
-        this.wavesurfer.on('finish', () => {
-          this.stopAnimation();
-        });
-      } else {
-        console.error('Không có file âm thanh ghi được.');
-      }
-    },
-    toggleRecording() {
-      this.isRecording = !this.isRecording;
-      if (this.isRecording) {
-        // this.startRecording();
-        document.getElementById("record_btn").classList.add('disabled');
-      } else {
-        // this.stopRecording();
-        document.getElementById("record_btn").classList.remove('disabled');
-      }
-    },
-    startRecording() {
-        navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          this.mediaRecorder = new MediaRecorder(stream);
-          this.recordedChunks = [];
-          this.mediaRecorder.ondataavailable = event => {
-            this.recordedChunks.push(event.data);
-          };
-          this.mediaRecorder.start();
-          document.querySelector('.icon-mic');
-        })
-        .catch(error => {
-          console.error('Lỗi truy cập microphone:', error);
-        });
-    },
-    stopRecording() {
-      if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-        this.mediaRecorder.stop();
-        document.querySelector('.icon-mic');
-      }
-
-      this.mediaRecorder.onstop = async () => {this.sendAudio()};
-    },
-    async sendAudio() {
-      const convertBlobToBase64 = async (blob) => {
-        return await blobToBase64(blob);
-      }
-
-      const blobToBase64 = blob => new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(blob);
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = error => reject(error);
-      });
-
-      console.log(this.recordedChunks.length)
-
-      if (this.recordedChunks.length > 0) {
-        let audioBlob = new Blob(this.recordedChunks, { type: 'audio/ogg' });
-
-        let audioUrl = URL.createObjectURL(audioBlob);
-        let audioRecorded = new Audio(audioUrl);
-
-        let audioBase64 = await convertBlobToBase64(audioBlob);
-
-        let minimumAllowedLength = 6;
-        if (audioBase64.length < minimumAllowedLength) {
-            setTimeout(UIRecordingError, 50); // Make sure this function finished after get called again
-            return;
-        }
-
-        try {
-          const response = await axios.post('/api/GetAccuracyFromRecordedAudio', JSON.stringify({ "title": "how old are you", "base64Audio": audioBase64}), {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          });
-          console.log('File âm thanh đã được gửi thành công.', response);
-        } catch (error) {
-          console.error('Lỗi khi gửi file âm thanh:', error);
-        }
-      } else {
-        console.error('Không gửi được file âm thanh.');
-      }
-    },
-    async fetchData() {
-      try {
-        const response = await axios.get('/api/getSample');
-        this.text = response.data.text;
-        this.ipa = response.data.ipa;
-        this.audio = response.data.audio;
-        this.length_data = this.text.length;
-        console.log(this.text, this.audio);
-      } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu:', error);
-      }
-    },
-    nextSentence() {
-      if (this.currentIndex < this.text.length - 1) {
-        this.currentIndex++;
-        this.progress = (this.currentIndex / this.text.length) * 100;
-      }
-    },
-    previousSentence() {
-      if (this.currentIndex > 0) {
-        this.currentIndex--;
-        this.progress = (this.currentIndex / this.text.length) * 100;
-      }
-    },
-    updateProgress() {
-      const currentTime = this.wavesurfer.getCurrentTime();
-      const duration = this.wavesurfer.getDuration();
-    },
-    startAnimation() {
-      const animate = () => {
-        this.updateProgress();
-        this.animationFrameId = requestAnimationFrame(animate);
-      };
-      this.animationFrameId = requestAnimationFrame(animate);
-    },
-    stopAnimation() {
-      if (this.animationFrameId) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
-      }
-    },
-  },
-  beforeDestroy() {
-    if (this.wavesurfer) {
-      this.wavesurfer.destroy();
-    }
-    this.stopAnimation();
-  },
-  playAudio() {
-      if (this.audio.length > 0 && this.currentIndex >= 0 && this.currentIndex < this.audio.length) {
-        const audioUrl = `data:audio/wav;base64,${this.audio[this.currentIndex]}`;
-        const audio = new Audio(audioUrl);
-        audio.play();
-        console.log('phát âm thanh');
-      } else {
-        console.error('Không có file âm thanh hoặc index không hợp lệ.');
-      }
-    },
+const fetchData = async () => {
+  try {
+    const response = await axios.get('/api/getall');
+    text.value = response.data.text;
+    audio.value = response.data.audio;
+    length_data.value = text.value.length;
+    console.log(text.value, audio.value);
+  } catch (error) {
+    console.error('Lỗi khi lấy dữ liệu:', error);
+  }
 };
+
+const initWaveSurfer = () => {
+  wavesurfer.value = WaveSurfer.create({
+    container: '#waveform',
+    waveColor: 'red',
+    progressColor: '#4CAF50',
+    cursorWidth: 0,
+    height: 100,
+    responsive: true,
+    backend: 'WebAudio',
+  });
+
+  wavesurfer.value.on('ready', () => {
+    console.log('WaveSurfer is ready');
+  });
+  wavesurfer.value.on('error', (e) => {
+    console.error(e);
+  });
+};
+
+const setActive = (button) => {
+  activeButton.value = button;
+};
+
+const playRecordedAudio = () => {
+  if (recordedChunks.value.length > 0) {
+    let recordedBlob = new Blob(recordedChunks.value, { type: 'audio/ogg' });
+    const audioUrl = URL.createObjectURL(recordedBlob);
+    const audioPlayer = new Audio(audioUrl);
+    audioPlayer.play();
+    wavesurfer.value.load(audioUrl);
+    wavesurfer.value.on('ready', () => {
+      wavesurfer.value.play();
+      startAnimation();
+    });
+
+    wavesurfer.value.on('finish', () => {
+      stopAnimation();
+    });
+  } else {
+    console.error('Không có file âm thanh ghi được.');
+  }
+};
+
+const toggleRecording = () => {
+  isRecording.value = !isRecording.value;
+  if (isRecording.value) {
+    startRecording();
+  } else {
+    stopRecording();
+  }
+};
+
+const startRecording = () => {
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => {
+      mediaRecorder.value = new MediaRecorder(stream);
+      recordedChunks.value = [];
+      mediaRecorder.value.ondataavailable = event => {
+        recordedChunks.value.push(event.data);
+      };
+      mediaRecorder.value.start();
+    })
+    .catch(error => {
+      console.error('Lỗi truy cập microphone:', error);
+    });
+};
+
+const stopRecording = () => {
+  if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
+    mediaRecorder.value.stop();
+  }
+
+  mediaRecorder.value.onstop = async () => { sendAudio() };
+};
+
+const sendAudio = async () => {
+  const convertBlobToBase64 = async (blob) => {
+    return await blobToBase64(blob);
+  };
+
+  const blobToBase64 = blob => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
+
+  if (recordedChunks.value.length > 0) {
+    let audioBlob = new Blob(recordedChunks.value, { type: 'audio/ogg' });
+    let audioBase64 = await convertBlobToBase64(audioBlob);
+
+    let minimumAllowedLength = 6;
+    if (audioBase64.length < minimumAllowedLength) {
+      setTimeout(() => { console.error('File audio quá ngắn.'); }, 50);
+      return;
+    }
+
+    try {
+      const response = await axios.post('/api/GetAccuracyFromRecordedAudio', JSON.stringify({ "title": "how old are you", "base64Audio": audioBase64 }), {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      console.log('File âm thanh đã được gửi thành công.', response);
+    } catch (error) {
+      console.error('Lỗi khi gửi file âm thanh:', error);
+    }
+  } else {
+    console.error('Không gửi được file âm thanh.');
+  }
+};
+
+const nextSentence = () => {
+  if (currentIndex.value < text.value.length - 1) {
+    currentIndex.value++;
+    progress.value = (currentIndex.value / text.value.length) * 100;
+    colors.value = 'red';
+  }
+};
+
+const previousSentence = () => {
+  if (currentIndex.value > 0) {
+    currentIndex.value--;
+    progress.value = (currentIndex.value / text.value.length) * 100;
+    colors.value = 'green';
+  }
+};
+
+const updateProgress = () => {
+  const currentTime = wavesurfer.value.getCurrentTime();
+  const duration = wavesurfer.value.getDuration();
+};
+
+const startAnimation = () => {
+  const animate = () => {
+    updateProgress();
+    animationFrameId.value = requestAnimationFrame(animate);
+  };
+  animationFrameId.value = requestAnimationFrame(animate);
+};
+
+const stopAnimation = () => {
+  if (animationFrameId.value) {
+    cancelAnimationFrame(animationFrameId.value);
+    animationFrameId.value = null;
+  }
+};
+
+onMounted(() => {
+  fetchData();
+  initWaveSurfer();
+});
+
+onBeforeUnmount(() => {
+  if (wavesurfer.value) {
+    wavesurfer.value.destroy();
+  }
+  stopAnimation();
+});
 </script>
+
 <style scoped>
-/* CSS cho giao diện */
 @import url('./../assets/home.css');
 </style>
