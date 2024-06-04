@@ -29,17 +29,16 @@
             </div>
           </div>
           <audio ref="audioPlayer" controls style="display: none;"></audio>
-          <div id="waveform">
-
-          </div>
+          <div id="waveform"></div>
           <div class="icon-container">
-            <div class="volume" @click="playRecordedAudio">
+            <div id="play_user_record_btn" class="button volume" @click="playRecordedAudio">
               <IconVolume />
             </div>
-            <div class="icon-mic" :class="{ 'recording': isRecording }" @click="toggleRecording">
+            <div id="record_btn" class="button icon-mic" :class="{ 'recording': isRecording }" @click="toggleRecording">
               <IconMic />
+              <!-- <font-awesome-icon :icon="['fas', 'microphone']" /> -->
             </div>
-            <div class="ear" @click="playAudio">
+            <div id="play_sample_record_btn" class="button ear" @click="playAudio">
               <IconEar />
             </div>
           </div>
@@ -62,6 +61,8 @@ import IconEar from '@/components/icons/IconEar.vue';
 import IconVolume from '@/components/icons/IconVolume.vue';
 import axios from 'axios';
 import WaveSurfer from 'wavesurfer.js';
+// import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+// import { fa } from '@awesome.me/kit-KIT_CODE/icons'
 
 export default {
   name: 'HomeView',
@@ -147,9 +148,11 @@ export default {
     toggleRecording() {
       this.isRecording = !this.isRecording;
       if (this.isRecording) {
-        this.startRecording();
+        // this.startRecording();
+        document.getElementById("record_btn").classList.add('disabled');
       } else {
-        this.stopRecording();
+        // this.stopRecording();
+        document.getElementById("record_btn").classList.remove('disabled');
       }
     },
     startRecording() {
@@ -161,7 +164,7 @@ export default {
             this.recordedChunks.push(event.data);
           };
           this.mediaRecorder.start();
-          document.querySelector('.icon-mic').style.border = "3px solid red";
+          document.querySelector('.icon-mic');
         })
         .catch(error => {
           console.error('Lỗi truy cập microphone:', error);
@@ -170,7 +173,7 @@ export default {
     stopRecording() {
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
         this.mediaRecorder.stop();
-        document.querySelector('.icon-mic').style.border = "1px solid black";
+        document.querySelector('.icon-mic');
       }
 
       this.mediaRecorder.onstop = async () => {this.sendAudio()};
