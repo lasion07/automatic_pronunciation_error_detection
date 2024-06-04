@@ -36,7 +36,6 @@
             </div>
             <div id="record_btn" class="button icon-mic" :class="{ 'recording': isRecording }" @click="toggleRecording">
               <IconMic />
-              <!-- <font-awesome-icon :icon="['fas', 'microphone']" /> -->
             </div>
             <div id="play_sample_record_btn" class="button ear" @click="playAudio">
               <IconEar />
