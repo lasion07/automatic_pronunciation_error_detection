@@ -10,7 +10,7 @@
               </div>
               <div class="progress-tool">
                 <div class="progress-container">
-                  <div class="progress-bar" :style="{ width: progress + '%', height: '100%', backgroundColor: 'green', position: 'absolute' }"></div>
+                  <div class="progress-bar" :style="{ width: progress + '%', height: '100%', position: 'absolute'}"></div>
                 </div>
               </div>
             </div>
@@ -37,10 +37,13 @@
             <div id="play_user_record_btn" class="button volume" @click="playRecordedAudio">
               <IconVolume />
             </div>
-            <div id="record_btn" class="button icon-mic" :class="{ 'recording': isRecording }" @click="toggleRecording">
+            <div id="record-button" class="button icon-mic" @click="startRecording">
               <IconMic />
             </div>
-            <div id="play_sample_record_btn" class="button ear" @click="playAudio">
+            <div id="stop-button" class="button stop-mic" style="display: none;"  @click="stopRecording">
+              <IconStop />
+            </div>
+            <div id="play_sample_record_btn" class="button ear" @click="playSampleAudio">
               <IconEar />
             </div>
           </div>
@@ -70,15 +73,18 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import axios from 'axios';
 import WaveSurfer from 'wavesurfer.js';
 import IconMic from '@/components/icons/IconMic.vue';
+import IconStop from '@/components/icons/IconStop.vue';
 import IconEar from '@/components/icons/IconEar.vue';
 import IconVolume from '@/components/icons/IconVolume.vue';
 
 const apiData = ref([]);
-const text = ref([]);
-const audio = ref([]);
+const text_list = ref([]);
+const ipa_text_list = ref([]);
+const audio_list = ref([]);
 const currentIndex = ref(0);
 const progress = ref(0);
 const isRecording = ref(false);
+// const timeout = ref(null);
 const recordedAudio = ref(null);
 const mediaRecorder = ref(null);
 const recordedChunks = ref([]);
@@ -94,6 +100,10 @@ const score = ref(0);
 const percentage = ref(0);
 const sentence = "hold your nose to keep the smell from disabling your motor functions";
 const coloredWords = ref([]);
+
+// let timeout = ref(null);
+var synth = window.speechSynthesis;
+let playing_audio = ref(false);
 
 generateColoredWords();
 
@@ -133,16 +143,16 @@ onMounted(() => {
 });
 // ============================================
 const currentSentence = computed(() => {
-  return text.value[currentIndex.value] || '';
+  return text_list.value[currentIndex.value] || '';
 });
 
 const fetchData = async () => {
   try {
-    const response = await axios.get('/api/getall');
-    text.value = response.data.text;
-    audio.value = response.data.audio;
-    length_data.value = text.value.length;
-    console.log(text.value, audio.value);
+    const response = await axios.get('/api/getData');
+    text_list.value = response.data.text_list;
+    ipa_text_list.value = response.data.ipa_text_list;
+    // length_data.value = text_list.value.length;
+    // console.log(text_list.value, ipa_text_list.value);
   } catch (error) {
     console.error('Lỗi khi lấy dữ liệu:', error);
   }
@@ -152,7 +162,7 @@ const initWaveSurfer = () => {
   wavesurfer.value = WaveSurfer.create({
     container: '#waveform',
     waveColor: 'red',
-    progressColor: '#4CAF50',
+    progressColor: '#58cc02',
     cursorWidth: 0,
     height: 100,
     responsive: true,
@@ -172,7 +182,7 @@ const setActive = (button) => {
 };
 
 const playRecordedAudio = () => {
-  if (recordedChunks.value.length > 0) {
+  if (recordedChunks.value.length > 0 && !wavesurfer.value.isPlaying()) {
     let recordedBlob = new Blob(recordedChunks.value, { type: 'audio/ogg' });
     const audioUrl = URL.createObjectURL(recordedBlob);
     const audioPlayer = new Audio(audioUrl);
@@ -187,28 +197,44 @@ const playRecordedAudio = () => {
       stopAnimation();
     });
   } else {
-    console.error('Không có file âm thanh ghi được.');
+    console.error('Không có file âm thanh được ghi.');
   }
 };
 
-const toggleRecording = () => {
-  isRecording.value = !isRecording.value;
-  if (isRecording.value) {
-    startRecording();
-  } else {
-    stopRecording();
-  }
+const playSampleAudio = () => {
+  playWithMozillaApi(text_list.value[currentIndex.value]);
 };
+
+const playWithMozillaApi = (text) => {
+  var utterThis = new SpeechSynthesisUtterance(text);
+      utterThis.voice = null;
+      utterThis.rate = 0.7;
+      utterThis.onend = function (event) {
+          // unblockUI();
+      }
+      synth.speak(utterThis);
+}
 
 const startRecording = () => {
+  document.getElementById("record-button").style.display = "none";
+  document.getElementById("stop-button").style.display = "flex";
+
   navigator.mediaDevices.getUserMedia({ audio: true })
     .then(stream => {
       mediaRecorder.value = new MediaRecorder(stream);
       recordedChunks.value = [];
+
       mediaRecorder.value.ondataavailable = event => {
         recordedChunks.value.push(event.data);
       };
+
+      mediaRecorder.value.onstop = async () => { sendAudio() };
+
       mediaRecorder.value.start();
+
+      setTimeout(() => {
+        stopRecording();
+      }, 5000);
     })
     .catch(error => {
       console.error('Lỗi truy cập microphone:', error);
@@ -216,11 +242,14 @@ const startRecording = () => {
 };
 
 const stopRecording = () => {
+  document.getElementById("record-button").style.display = "flex";
+  document.getElementById("stop-button").style.display = "none";
+
   if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
     mediaRecorder.value.stop();
   }
 
-  mediaRecorder.value.onstop = async () => { sendAudio() };
+  // clearTimeout(timeout);
 };
 
 const sendAudio = async () => {
@@ -246,7 +275,7 @@ const sendAudio = async () => {
     }
 
     try {
-      const response = await axios.post('/api/GetAccuracyFromRecordedAudio', JSON.stringify({ "title": "how old are you", "base64Audio": audioBase64 }), {
+      const response = await axios.post('/api/GetAccuracyFromRecordedAudio', JSON.stringify({ "title": text_list.value[currentIndex.value], "base64Audio": audioBase64 }), {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -261,18 +290,18 @@ const sendAudio = async () => {
 };
 
 const nextSentence = () => {
-  if (currentIndex.value < text.value.length - 1) {
+  if (currentIndex.value < text_list.value.length - 1) {
     currentIndex.value++;
-    progress.value = (currentIndex.value / text.value.length) * 100;
-    colors.value = 'red';
+    progress.value = (currentIndex.value / (text_list.value.length - 1)) * 100;
+    // colors.value = 'red';
   }
 };
 
 const previousSentence = () => {
   if (currentIndex.value > 0) {
     currentIndex.value--;
-    progress.value = (currentIndex.value / text.value.length) * 100;
-    colors.value = 'green';
+    progress.value = (currentIndex.value / (text_list.value.length - 1)) * 100;
+    // colors.value = 'green';`
   }
 };
 
