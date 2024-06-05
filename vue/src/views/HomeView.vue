@@ -48,7 +48,7 @@
       </div>
       <div class="display-result">
         <div class="score-result">
-          <div class="circle" :style="{ '--percentage': score + '%' }">
+          <div class="circle" :style="{ '--percentage': percentage + '%' }">
             <div class="circle-inner">
               <span class="score">{{ score }}%</span>
             </div>
@@ -84,13 +84,14 @@ const mediaRecorder = ref(null);
 const recordedChunks = ref([]);
 const audioSaved = ref(false);
 const activeButton = ref(null);
-const score = ref(90);
+// const score = ref(90);
 const getalldata = ref(false);
 const length_data = ref(0);
 const wavesurfer = ref(null);
 const animationFrameId = ref(null);
 // demo  =================================
-
+const score = ref(0);
+const percentage = ref(0);
 const sentence = "hold your nose to keep the smell from disabling your motor functions";
 const coloredWords = ref([]);
 
@@ -111,6 +112,25 @@ function generateColoredWords() {
     coloredWords.value.push({ word: words[i], color: color });
   }
 }
+
+const animateScore = (start, end, duration) => {
+  const stepTime = Math.abs(Math.floor(duration / (end - start)));
+  let current = start;
+  const increment = end > start ? 1 : -1;
+  const timer = setInterval(() => {
+    current += increment;
+    percentage.value = current;
+    if (current === end) {
+      clearInterval(timer);
+    }
+  }, stepTime);
+};
+
+// // Thiết lập giá trị của score 
+onMounted(() => {
+  score.value = 50; // Giá trị score 
+  animateScore(0, score.value, 800);
+});
 // ============================================
 const currentSentence = computed(() => {
   return text.value[currentIndex.value] || '';
