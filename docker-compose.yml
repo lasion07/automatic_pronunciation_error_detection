@@ -1,0 +1,25 @@
+version: '3'
+services:
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile  
+    ports:
+      - "8080:8080"  
+    command: bash /backend/scripts/python.sh
+    volumes:
+      - ./:/backend/
+    environment:
+      HOST: "0.0.0.0"
+  frontend:  
+    build: 
+      context: ./vue
+      dockerfile: Dockerfile  
+    ports:
+      - "5173:5173"  
+    command: bash /shcmd/scripts/vue.sh
+    volumes:
+      - ./vue:/frontend/
+      - ./:/shcmd/
+    environment:
+      HOST: "0.0.0.0"

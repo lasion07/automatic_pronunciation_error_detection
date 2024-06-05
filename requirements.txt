@@ -15,3 +15,4 @@ sqlalchemy
 transformers
 sentencepiece
 ortools
+phonemizer

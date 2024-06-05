@@ -263,7 +263,7 @@ const sendAudio = async () => {
 const nextSentence = () => {
   if (currentIndex.value < text.value.length - 1) {
     currentIndex.value++;
-    progress.value = (currentIndex.value / text.value.length) * 100;
+    progress.value = (currentIndex.value / (text.value.length-1)) * 100;
     colors.value = 'red';
   }
 };
@@ -271,7 +271,7 @@ const nextSentence = () => {
 const previousSentence = () => {
   if (currentIndex.value > 0) {
     currentIndex.value--;
-    progress.value = (currentIndex.value / text.value.length) * 100;
+    progress.value = (currentIndex.value / (text.value.length-1)) * 100;
     colors.value = 'green';
   }
 };
