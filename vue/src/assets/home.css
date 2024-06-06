@@ -81,6 +81,11 @@
     background-color: rgb(255, 255, 255);
     justify-content: center;
   }
+
+  /* .ipa-result {
+    font-family: Arial, Helvetica, sans-serif;
+  } */
+
   .button {
     background-color: white; /* Green */
     border: none;
@@ -183,8 +188,8 @@
   .button-container button {
     cursor: pointer;
     background-color: white;
-    border: 2px solid #e5e5e5;
-    color: #afafaf;
+    border: 2px solid #afafaf;
+    color: #777777;
     font-weight: bold;
     margin: 10px 10px; /* Khoảng cách giữa các button */
     width: 150px;

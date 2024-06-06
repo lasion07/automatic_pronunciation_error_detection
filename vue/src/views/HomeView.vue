@@ -35,6 +35,11 @@
                 {{ charObj.char }}
               </span>
             </div>
+            <div id="ipa-result" :style="{ display: display_words, fontSize: size_words + 'px', 'margin-top': topmr + 'px' }">
+              <span >
+                {{ prediction }}
+              </span>
+            </div>
             <!-- <div id="pred">
               prediction.value
             </div> -->
@@ -188,7 +193,7 @@ function generateColorIPA_text(){
 
 
 const animateScore = (start, end, duration) => {
-  const stepTime = Math.abs(Math.floor(duration / (end - start)));
+  const stepTime = Math.abs(Math.floor(duration / (end - start + 0.001)));
   let current = start;
   const increment = end > start ? 1 : -1;
   const timer = setInterval(() => {
@@ -331,7 +336,7 @@ const sendAudio = async () => {
       console.log('File âm thanh đã được gửi thành công.', response);
       score.value = await response.data.score*100;
       percentage.value = await response.data.score*100;
-      animateScore(0, score.value, 800);
+      animateScore(0, score.value, 600);
       words_scores.value = await response.data.word_scores;
       check_words.value = true;
       generateColoredWords();
@@ -361,7 +366,6 @@ const nextSentence = () => {
     display_words.value = 'none';
     score.value = 0;
     percentage.value = 0;
-    animateScore(0, score.value, 800);
   }
 };
 
@@ -374,8 +378,7 @@ const previousSentence = () => {
     display_words.value = 'none';
     score.value = 0;
     percentage.value = 0;
-    animateScore(0, score.value, 800);
-  }
+    }
 };
 
 const updateProgress = () => {
