@@ -34,7 +34,13 @@
               <span v-for="(charObj, index) in color_ipa" :key="index" :class="charObj.color">
                 {{ charObj.char }}
               </span>
-            </div>            
+            </div>
+            <!-- <div id="pred">
+              prediction.value
+            </div> -->
+            <!-- <div id="ipa-pred" :style="{ display: display_words, fontSize: size_words + 'px', 'margin-top': topmr + 'px' }">
+              {{ prediction.value }}
+            </div>             -->
           </div>
           <audio ref="audioPlayer" controls style="display: none;"></audio>
           <div id="waveform"></div>
@@ -112,7 +118,7 @@ const error_char_indexes = ref([])
 const color_ipa = ref([]);
 
 var synth = window.speechSynthesis;
-let playing_audio = ref(false);
+let prediction = ref('');
 const fetchData = async () => {
   try {
     const response = await axios.get('/api/getData');
@@ -158,22 +164,19 @@ function generateColoredWords() {
 function generateColorIPA_text(){
   const ipa_text = current_ipa_text.value.split('');
   color_ipa.value = [];
-  let color ;
-  const ipa_count = 0;
+  let color = 'black';
+  let ipa_count = 0;
   for (let i = 0; i < ipa_text.length; i++) {
-  if (ipa_text[i] !== ' ') {
-    console.log('color ipa value : ',typeof(error_char_indexes.value[ipa_count]));
-    if (error_char_indexes.value[ipa_count][ipa_count] === 'false') { // So sánh với chuỗi 'false'
-      color = 'red';
-    } else {
-      color = 'green';
-    }
-    ipa_count++;
-  } else {
-    color = 'black';
+      if (ipa_text[i] !== ' ' && ipa_text[i] !== 'ˈ' && ipa_text[i] !== 'ˌ') {
+        if (error_char_indexes.value[ipa_count] == false) {
+          color = 'red';
+        } else {
+          color = 'green';
+        }
+        ipa_count++;
+      }
+    color_ipa.value.push({ char: ipa_text[i], color: color });
   }
-  color_ipa.value.push({ char: ipa_text[i], color: color });
-}
   
   }
 
@@ -335,6 +338,9 @@ const sendAudio = async () => {
       display_words.value = 'block';
       console.log('word_scores',words_scores.value);
       error_char_indexes.value = await response.data.error_char_indexes;
+      // current_ipa_text.value = await response.data.label_string;
+      prediction.value = await response.data.pred_string;
+      // console.log(prediction.value);
       check();
      
 
@@ -353,6 +359,9 @@ const nextSentence = () => {
     check_words.value = false;
     generateColoredWords();
     display_words.value = 'none';
+    score.value = 0;
+    percentage.value = 0;
+    animateScore(0, score.value, 800);
   }
 };
 
@@ -363,6 +372,9 @@ const previousSentence = () => {
     check_words.value = false;
     generateColoredWords();
     display_words.value = 'none';
+    score.value = 0;
+    percentage.value = 0;
+    animateScore(0, score.value, 800);
   }
 };
 

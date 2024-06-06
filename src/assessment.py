@@ -190,7 +190,9 @@ def lambda_handler(event, context):
 
     res = {'score': score,
            'error_char_indexes': error_char_indexes,
-           'word_scores': word_scores}
+           'word_scores': word_scores,
+           'label_string': label_string,
+           'pred_string': pred}
     
     print(res)
 
