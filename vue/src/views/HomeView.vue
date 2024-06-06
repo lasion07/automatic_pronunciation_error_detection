@@ -25,11 +25,16 @@
             </div>
             <!--transcription-->
             <div id="sentence">
-              <span v-for="(word, index) in currentSentence.split(' ')" :key="index">
+              <span v-for="(word, index) in current_ipa_text.split(' ')" :key="index">
                 {{ word }}
-                <span v-if="index !== currentSentence.split(' ').length - 1">&nbsp;</span>
+                <span v-if="index !== current_ipa_text.split(' ').length - 1">&nbsp;</span>
               </span>
             </div>
+            <div id="ipa-result" :style="{ display: display_words, fontSize: size_words + 'px', 'margin-top': topmr + 'px' }">
+              <span v-for="(charObj, index) in color_ipa" :key="index" :class="charObj.color">
+                {{ charObj.char }}
+              </span>
+            </div>            
           </div>
           <audio ref="audioPlayer" controls style="display: none;"></audio>
           <div id="waveform"></div>
@@ -69,7 +74,7 @@
   </div>
 </template>
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import axios from 'axios';
 import WaveSurfer from 'wavesurfer.js';
 import IconMic from '@/components/icons/IconMic.vue';
@@ -84,44 +89,100 @@ const audio_list = ref([]);
 const currentIndex = ref(0);
 const progress = ref(0);
 const isRecording = ref(false);
-// const timeout = ref(null);
 const recordedAudio = ref(null);
 const mediaRecorder = ref(null);
 const recordedChunks = ref([]);
 const audioSaved = ref(false);
 const activeButton = ref(null);
-// const score = ref(90);
 const getalldata = ref(false);
 const length_data = ref(0);
 const wavesurfer = ref(null);
 const animationFrameId = ref(null);
-// demo  =================================
+
 const score = ref(0);
 const percentage = ref(0);
-const sentence = "hold your nose to keep the smell from disabling your motor functions";
+const sentence = ref('');
 const coloredWords = ref([]);
+const words_scores = ref([]);
+const check_words = ref(false);
+const display_words = ref('none');
+const size_words = ref(25);
+const topmr = ref(20);
+const error_char_indexes = ref([])
+const color_ipa = ref([]);
 
-// let timeout = ref(null);
 var synth = window.speechSynthesis;
 let playing_audio = ref(false);
+const fetchData = async () => {
+  try {
+    const response = await axios.get('/api/getData');
+    text_list.value = response.data.text_list;
+    ipa_text_list.value = response.data.ipa_text_list;
 
-generateColoredWords();
+  } catch (error) {
+    console.error('Lỗi khi lấy dữ liệu:', error);
+  }
+};
 
+const currentSentence = computed(() => {
+  return text_list.value[currentIndex.value] || '';
+});
+
+const current_ipa_text = computed(() => {
+  return ipa_text_list.value[currentIndex.value] || '';
+});
 function generateColoredWords() {
-  const words = sentence.split(' ');
-  for (let i = 0; i < words.length; i++) {
-    const score = Math.random();
-    let color;
-    if (score >= 0.8) {
-      color = 'green';
-    } else if (score < 0.5) {
-      color = 'red';
-    } else {
-      color = 'yellow';
+  const words = currentSentence.value.split(' ');
+  coloredWords.value = []; // Đặt lại mảng coloredWords trước khi thêm các từ mới
+  if (check_words.value)
+  {
+    for (let i = 0; i < words.length; i++) {
+      // const score = Math.random();
+      let color;
+      if (words_scores.value[i] >= 0.8) {
+        color = 'green';
+      } else if (words_scores.value[i] < 0.5) {
+        color = 'red';
+      } else {
+        color = 'yellow';
+      }
+      coloredWords.value.push({ word: words[i], color: color });
     }
-    coloredWords.value.push({ word: words[i], color: color });
+  }else{
+    for (let i = 0; i < words.length; i++) {
+      coloredWords.value.push({ word: words[i], color: "black" });
+    }
   }
 }
+
+function generateColorIPA_text(){
+  const ipa_text = current_ipa_text.value.split('');
+  color_ipa.value = [];
+  let color ;
+  const ipa_count = 0;
+  for (let i = 0; i < ipa_text.length; i++) {
+  if (ipa_text[i] !== ' ') {
+    console.log('color ipa value : ',typeof(error_char_indexes.value[ipa_count]));
+    if (error_char_indexes.value[ipa_count][ipa_count] === 'false') { // So sánh với chuỗi 'false'
+      color = 'red';
+    } else {
+      color = 'green';
+    }
+    ipa_count++;
+  } else {
+    color = 'black';
+  }
+  color_ipa.value.push({ char: ipa_text[i], color: color });
+}
+  
+  }
+
+  function check(){
+    if (check_words){
+      generateColorIPA_text();
+    }
+  }
+
 
 const animateScore = (start, end, duration) => {
   const stepTime = Math.abs(Math.floor(duration / (end - start)));
@@ -136,28 +197,12 @@ const animateScore = (start, end, duration) => {
   }, stepTime);
 };
 
-// // Thiết lập giá trị của score 
-onMounted(() => {
-  score.value = 50; // Giá trị score 
-  animateScore(0, score.value, 800);
+watch(currentSentence, (newValue) => {
+  sentence.value = newValue;
+  generateColoredWords(); // Cập nhật colored words mỗi khi câu thay đổi
 });
+
 // ============================================
-const currentSentence = computed(() => {
-  return text_list.value[currentIndex.value] || '';
-});
-
-const fetchData = async () => {
-  try {
-    const response = await axios.get('/api/getData');
-    text_list.value = response.data.text_list;
-    ipa_text_list.value = response.data.ipa_text_list;
-    // length_data.value = text_list.value.length;
-    // console.log(text_list.value, ipa_text_list.value);
-  } catch (error) {
-    console.error('Lỗi khi lấy dữ liệu:', error);
-  }
-};
-
 const initWaveSurfer = () => {
   wavesurfer.value = WaveSurfer.create({
     container: '#waveform',
@@ -281,6 +326,18 @@ const sendAudio = async () => {
         }
       });
       console.log('File âm thanh đã được gửi thành công.', response);
+      score.value = await response.data.score*100;
+      percentage.value = await response.data.score*100;
+      animateScore(0, score.value, 800);
+      words_scores.value = await response.data.word_scores;
+      check_words.value = true;
+      generateColoredWords();
+      display_words.value = 'block';
+      console.log('word_scores',words_scores.value);
+      error_char_indexes.value = await response.data.error_char_indexes;
+      check();
+     
+
     } catch (error) {
       console.error('Lỗi khi gửi file âm thanh:', error);
     }
@@ -293,7 +350,9 @@ const nextSentence = () => {
   if (currentIndex.value < text_list.value.length - 1) {
     currentIndex.value++;
     progress.value = (currentIndex.value / (text_list.value.length - 1)) * 100;
-    // colors.value = 'red';
+    check_words.value = false;
+    generateColoredWords();
+    display_words.value = 'none';
   }
 };
 
@@ -301,7 +360,9 @@ const previousSentence = () => {
   if (currentIndex.value > 0) {
     currentIndex.value--;
     progress.value = (currentIndex.value / (text_list.value.length - 1)) * 100;
-    // colors.value = 'green';`
+    check_words.value = false;
+    generateColoredWords();
+    display_words.value = 'none';
   }
 };
 
@@ -328,6 +389,7 @@ const stopAnimation = () => {
 onMounted(() => {
   fetchData();
   initWaveSurfer();
+  generateColoredWords();
 });
 
 onBeforeUnmount(() => {
@@ -339,5 +401,5 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-@import url('./../assets/home.css');
+@import './../assets/home.css';
 </style>
